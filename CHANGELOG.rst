@@ -102,6 +102,7 @@ Deprecations and removed features
   If this happens, you can use the ``reset`` command from ``ncurses`` to restore the terminal state.
 - ``fish_key_reader --verbose`` is now ignored, so it no longer shows raw byte values or timing information.
   Raw byte values should no longer be necessary because fish now decodes them to the new human-readable key names for builtin bind.
+- Instant propagation of universal variables now only works on Linux and macOS. On other platforms, changes to universal variables may only become visible on the next prompt.
 
 Scripting improvements
 ----------------------
@@ -155,6 +156,7 @@ Interactive improvements
 - ``read --help`` and friends no longer ignore redirections. This fixes a regression in version 3.1 (:issue:`10274`).
 - Measuring a command with ``time`` now considers the time taken for command substitution (:issue:`9100`).
 - ``fish_add_path`` now automatically enables verbose mode when used interactively (in the commandline), in an effort to be clearer about what it does (:issue:`10532`).
+- fish no longer adopts TTY modes of failed commands (:issue:`10603`).
 
 New or improved bindings
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -201,6 +203,7 @@ Improved terminal support
 Other improvements
 ------------------
 - ``fish_indent`` will now collapse multiple successive empty lines into one (:issue:`10325`).
+- ``fish_indent`` now preserves the modification time of files if there were no changes (:issue:`10624`).
 - The HTML-based configuration UI (``fish_config``) now uses Alpine.js instead of AngularJS (:issue:`9554`).
 - ``fish_config`` now also works in a Windows MSYS environment (:issue:`10111`).
 - Performance and interactivity under WSLv1 and WSLv2 has been improved with a workaround for Windows-specific locations being appended to ``$PATH`` by default (:issue:`10506`).

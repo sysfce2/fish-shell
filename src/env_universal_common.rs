@@ -774,7 +774,6 @@ impl EnvUniversal {
         let real_path = wrealpath(&self.vars_path).unwrap_or_else(|| self.vars_path.clone());
 
         // Ensure we maintain ownership and permissions (#2176).
-        // let mut sbuf : libc::stat = MaybeUninit::uninit();
         if let Ok(md) = wstat(&real_path) {
             if unsafe { libc::fchown(private_fd.as_raw_fd(), md.uid(), md.gid()) } == -1 {
                 FLOG!(uvar_file, "universal log fchown() failed");
@@ -800,12 +799,14 @@ impl EnvUniversal {
         // unlikely to affect users.
         #[cfg(any(target_os = "linux", target_os = "android"))]
         {
-            let mut times: [libc::timespec; 2] = unsafe { std::mem::zeroed() };
-            times[0].tv_nsec = libc::UTIME_OMIT; // don't change ctime
-            if unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, &mut times[1]) } != 0 {
-                unsafe {
-                    libc::futimens(private_fd.as_raw_fd(), &times[0]);
-                }
+            use crate::libc::{clock_gettime64, futimens64, timespec64};
+            #[allow(clippy::useless_conversion)]
+            let t0 = timespec64 {
+                tv_sec: 0,
+                tv_nsec: libc::UTIME_OMIT.try_into().unwrap(), // don't change ctime
+            };
+            if let Some(t1) = clock_gettime64(libc::CLOCK_REALTIME) {
+                futimens64(private_fd.as_raw_fd(), t0, t1);
             }
         }
 

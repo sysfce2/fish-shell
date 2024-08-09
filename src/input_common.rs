@@ -11,6 +11,7 @@ use crate::key::{
     self, alt, canonicalize_control_char, canonicalize_keyed_control_char, function_key, shift,
     Key, Modifiers,
 };
+use crate::libc::{pselect64, timespec64};
 use crate::reader::{reader_current_data, reader_test_and_clear_interrupted};
 use crate::threads::{iothread_port, MainThread};
 use crate::universal_notifier::default_notifier;
@@ -434,8 +435,13 @@ static TERMINAL_PROTOCOLS: MainThread<RefCell<Option<TerminalProtocols>>> =
     MainThread::new(RefCell::new(None));
 
 pub(crate) static IS_TMUX: RelaxedAtomicBool = RelaxedAtomicBool::new(false);
+pub(crate) static IN_MIDNIGHT_COMMANDER: RelaxedAtomicBool = RelaxedAtomicBool::new(false);
+pub(crate) static IN_ITERM: RelaxedAtomicBool = RelaxedAtomicBool::new(false);
 
 pub fn terminal_protocols_enable_ifn() {
+    if IN_MIDNIGHT_COMMANDER.load() {
+        return;
+    }
     let mut term_protocols = TERMINAL_PROTOCOLS.get().borrow_mut();
     if term_protocols.is_some() {
         return;
@@ -457,12 +463,16 @@ struct TerminalProtocols {}
 
 impl TerminalProtocols {
     fn new() -> Self {
-        let sequences = concat!(
-            "\x1b[?2004h", // Bracketed paste
-            "\x1b[>4;1m",  // XTerm's modifyOtherKeys
-            "\x1b[>5u",    // CSI u with kitty progressive enhancement
-            "\x1b=",       // set application keypad mode, so the keypad keys send unique codes
-        );
+        let sequences = if IN_ITERM.load() {
+            concat!("\x1b[?2004h", "\x1b[>4;1m", "\x1b[>5u", "\x1b=",)
+        } else {
+            concat!(
+                "\x1b[?2004h", // Bracketed paste
+                "\x1b[>4;1m",  // XTerm's modifyOtherKeys
+                "\x1b[=5u",    // CSI u with kitty progressive enhancement
+                "\x1b=",       // set application keypad mode, so the keypad keys send unique codes
+            )
+        };
         FLOG!(
             term_protocols,
             format!(
@@ -481,12 +491,16 @@ impl TerminalProtocols {
 
 impl Drop for TerminalProtocols {
     fn drop(&mut self) {
-        let sequences = concat!(
-            "\x1b[?2004l",
-            "\x1b[>4;0m",
-            "\x1b[<1u", // Konsole breaks unless we pass an explicit number of entries to pop.
-            "\x1b>",
-        );
+        let sequences = if IN_ITERM.load() {
+            concat!("\x1b[?2004l", "\x1b[>4;0m", "\x1b[<1u", "\x1b>",)
+        } else {
+            concat!(
+                "\x1b[?2004l", // Bracketed paste
+                "\x1b[>4;0m",  // XTerm's modifyOtherKeys
+                "\x1b[=0u",    // CSI u with kitty progressive enhancement
+                "\x1b>",       // application keypad mode
+            )
+        };
         FLOG!(
             term_protocols,
             format!(
@@ -1067,7 +1081,7 @@ pub trait InputEventQueuer {
         const NSEC_PER_MSEC: u64 = 1000 * 1000;
         const NSEC_PER_SEC: u64 = NSEC_PER_MSEC * 1000;
         let wait_nsec: u64 = (wait_time_ms as u64) * NSEC_PER_MSEC;
-        let timeout = libc::timespec {
+        let timeout = timespec64 {
             tv_sec: (wait_nsec / NSEC_PER_SEC).try_into().unwrap(),
             tv_nsec: (wait_nsec % NSEC_PER_SEC).try_into().unwrap(),
         };
@@ -1079,16 +1093,14 @@ pub trait InputEventQueuer {
             libc::FD_ZERO(&mut fdset);
             libc::FD_SET(in_fd, &mut fdset);
         };
-        let res = unsafe {
-            libc::pselect(
-                in_fd + 1,
-                &mut fdset,
-                ptr::null_mut(),
-                ptr::null_mut(),
-                &timeout,
-                &sigs,
-            )
-        };
+        let res = pselect64(
+            in_fd + 1,
+            &mut fdset,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            &timeout,
+            &sigs,
+        );
 
         // Prevent signal starvation on WSL causing the `torn_escapes.py` test to fail
         if is_windows_subsystem_for_linux(WSL::V1) {

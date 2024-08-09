@@ -35,6 +35,7 @@ use fish_printf::sprintf;
 use libc::c_int;
 use std::cell::{Ref, RefCell, RefMut};
 use std::ffi::{CStr, OsStr};
+use std::num::NonZeroU32;
 use std::os::fd::{AsRawFd, OwnedFd, RawFd};
 use std::os::unix::prelude::OsStrExt;
 use std::rc::Rc;
@@ -75,8 +76,8 @@ pub struct Block {
     /// Name of the file that created this block
     pub src_filename: Option<Arc<WString>>,
 
-    /// Line number where this block was created.
-    pub src_lineno: Option<usize>,
+    /// Line number where this block was created, starting from 1.
+    pub src_lineno: Option<NonZeroU32>,
 }
 
 impl Block {
@@ -125,7 +126,7 @@ impl Block {
         .to_owned();
 
         if let Some(src_lineno) = self.src_lineno {
-            result.push_utfstr(&sprintf!(" (line %d)", src_lineno));
+            result.push_utfstr(&sprintf!(" (line %d)", src_lineno.get()));
         }
         if let Some(src_filename) = &self.src_filename {
             result.push_utfstr(&sprintf!(" (file %ls)", src_filename));
@@ -667,7 +668,7 @@ impl Parser {
             return WString::new();
         };
 
-        let lineno = self.get_lineno().unwrap_or(0);
+        let lineno = self.get_lineno_for_display();
         let file = self.current_filename();
 
         let mut prefix = WString::new();
@@ -708,12 +709,17 @@ impl Parser {
     }
 
     /// Returns the current line number, indexed from 1.
-    pub fn get_lineno(&self) -> Option<usize> {
+    pub fn get_lineno(&self) -> Option<NonZeroU32> {
         // The offset is 0 based; the number is 1 based.
         self.line_counter
             .borrow_mut()
             .line_offset_of_node()
-            .map(|offset| offset + 1)
+            .map(|offset| NonZeroU32::new(offset.saturating_add(1)).unwrap())
+    }
+
+    /// Returns the current line number, indexed from 1, or zero if not sourced.
+    pub fn get_lineno_for_display(&self) -> u32 {
+        self.get_lineno().map(|val| val.get()).unwrap_or(0)
     }
 
     /// Return whether we are currently evaluating a "block" such as an if statement.
@@ -1222,7 +1228,7 @@ fn append_block_description_to_stack_trace(parser: &Parser, b: &Block, trace: &m
         if let Some(file) = b.src_filename.as_ref() {
             trace.push_utfstr(&sprintf!(
                 "\tcalled on line %d of file %ls\n",
-                b.src_lineno.unwrap_or(0),
+                b.src_lineno.map(|n| n.get()).unwrap_or(0),
                 user_presentable_path(file, parser.vars())
             ));
         } else if parser.libdata().within_fish_init {
