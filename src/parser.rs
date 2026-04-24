@@ -11,7 +11,6 @@ use crate::{
     },
     event::{self, Event},
     expand::{ExpandFlags, ExpandResultCode, expand_string, replace_home_directory_with_tilde},
-    fds::{BEST_O_SEARCH, open_dir},
     flog, flogf, function,
     global_safety::RelaxedAtomicBool,
     input_common::TerminalQuery,
@@ -29,7 +28,6 @@ use crate::{
     proc::{JobGroupRef, JobList, JobRef, Pid, ProcStatus, job_reap},
     signal::{Signal, signal_check_cancel, signal_clear_cancel},
     wait_handle::WaitHandleStore,
-    wutil::perror_nix,
 };
 use assert_matches::assert_matches;
 use fish_common::{
@@ -44,7 +42,6 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write as _;
 use std::num::NonZeroU32;
-use std::os::fd::OwnedFd;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -281,10 +278,6 @@ pub struct LibraryData {
     /// the command line.
     pub transient_commandline: Option<WString>,
 
-    /// A file descriptor holding the current working directory, for use in openat().
-    /// This is never null and never invalid.
-    pub cwd_fd: Option<Arc<OwnedFd>>,
-
     /// Variables supporting the "status" builtin.
     pub status_vars: StatusVars,
 
@@ -474,15 +467,6 @@ impl Parser {
             blocking_query: RefCell::new(None),
             blocking_query_timeout: RefCell::new(None),
         };
-
-        match open_dir(c".", BEST_O_SEARCH) {
-            Ok(fd) => {
-                result.libdata_mut().cwd_fd = Some(Arc::new(fd));
-            }
-            Err(err) => {
-                perror_nix("Unable to open the current working directory", err);
-            }
-        }
 
         result
     }
