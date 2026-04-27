@@ -487,6 +487,10 @@ impl BackgroundFdMonitor {
 /// fds arounds; this is why it's very hacky!
 impl Drop for FdMonitor {
     fn drop(&mut self) {
+        #[allow(clippy::assertions_on_constants)]
+        {
+            assert!(cfg!(test));
+        }
         self.data.locked.lock().expect("Mutex poisoned!").terminate = true;
         self.change_signaller.post();
 
