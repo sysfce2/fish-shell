@@ -135,6 +135,7 @@ impl FdEventSignaller {
     /// If `wait` is set, wait until it is readable; this does not consume the event
     /// but guarantees that the next call to wait() will not block.
     /// Return true if readable, false if not readable, or not interrupted by a signal.
+    #[cfg(test)]
     pub fn poll(&self, wait: bool /* = false */) -> bool {
         let timeout = if wait {
             Timeout::Forever
