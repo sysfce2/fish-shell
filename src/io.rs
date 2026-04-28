@@ -32,9 +32,9 @@ use std::{
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SeparationType {
     /// this element should be further separated by IFS
-    inferred,
+    Inferred,
     /// this element is explicitly separated and should not be further split
-    explicitly,
+    Explicitly,
 }
 
 pub struct BufferElement {
@@ -50,7 +50,7 @@ impl BufferElement {
         }
     }
     pub fn is_explicitly_separated(&self) -> bool {
-        self.separation == SeparationType::explicitly
+        self.separation == SeparationType::Explicitly
     }
 }
 
@@ -116,7 +116,7 @@ impl SeparatedBuffer {
             return false;
         }
         // Try merging with the last element.
-        if sep == SeparationType::inferred && self.last_inferred() {
+        if sep == SeparationType::Inferred && self.last_inferred() {
             self.elements
                 .last_mut()
                 .unwrap()
@@ -430,7 +430,7 @@ impl IoBuffer {
         } else if amt > 0 {
             buffer.append(
                 &bytes[0..usize::try_from(amt).unwrap()],
-                SeparationType::inferred,
+                SeparationType::Inferred,
             );
         }
         amt
@@ -718,7 +718,7 @@ impl OutputStream {
         match self {
             OutputStream::Buffered(stream) => stream.append_with_separation(s, typ, want_newline),
             OutputStream::Fd(_) | OutputStream::Null | OutputStream::String(_) => {
-                if typ == SeparationType::explicitly && want_newline {
+                if typ == SeparationType::Explicitly && want_newline {
                     self.appendln(s)
                 } else {
                     self.append(s)
@@ -814,7 +814,7 @@ impl BufferedOutputStream {
         Self { buffer }
     }
     fn append(&mut self, s: impl IntoCharIter) -> bool {
-        self.buffer.append(&wcs2bytes(s), SeparationType::inferred)
+        self.buffer.append(&wcs2bytes(s), SeparationType::Inferred)
     }
     fn append_with_separation(
         &mut self,

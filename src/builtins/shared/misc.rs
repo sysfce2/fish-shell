@@ -557,7 +557,7 @@ pub fn builtin_print_help(parser: &Parser, streams: &mut IoStreams, cmd: &wstr) 
         &cmd,
         streams.io_chain,
         streams.job_group.as_ref(),
-        BlockType::top,
+        BlockType::Top,
         false,
     );
     if res.status.normal_exited() && res.status.exit_code() == 2 {
@@ -950,7 +950,7 @@ pub fn builtin_break_continue(
     // This is checked in the AST but we may be invoked dynamically, e.g. just via "eval break".
     let mut has_loop = false;
     for b in parser.blocks_iter_rev() {
-        if [BlockType::while_block, BlockType::for_block].contains(&b.typ()) {
+        if [BlockType::WhileBlock, BlockType::ForBlock].contains(&b.typ()) {
             has_loop = true;
             break;
         }
@@ -967,9 +967,9 @@ pub fn builtin_break_continue(
 
     // Mark the status in the libdata.
     parser.libdata_mut().loop_status = if is_break {
-        LoopStatus::breaks
+        LoopStatus::Breaks
     } else {
-        LoopStatus::continues
+        LoopStatus::Continues
     };
     Ok(SUCCESS)
 }

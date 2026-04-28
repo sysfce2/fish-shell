@@ -973,7 +973,7 @@ fn read_ni(parser: &Parser, fd: RawFd, io: &IoChain) -> Result<(), ErrorCode> {
         s.remove(0);
     }
 
-    match parser.eval_wstr(s, io, None, BlockType::top) {
+    match parser.eval_wstr(s, io, None, BlockType::Top) {
         Ok(_) => Ok(()),
         Err(msg) => {
             eprintf!("%s", msg);
@@ -1868,16 +1868,16 @@ impl<'a> Reader<'a> {
 
                 for color in &mut colors[range] {
                     if explicit_foreground {
-                        color.foreground = HighlightRole::search_match;
+                        color.foreground = HighlightRole::SearchMatch;
                     }
-                    color.background = HighlightRole::search_match;
+                    color.background = HighlightRole::SearchMatch;
                 }
             }
         }
 
         // Apply any selection.
         if let Some(selection) = data.selection {
-            let selection_color = HighlightSpec::with_both(HighlightRole::selection);
+            let selection_color = HighlightSpec::with_both(HighlightRole::Selection);
             let end = std::cmp::min(selection.stop, colors.len());
             for color in &mut colors[selection.start.min(end)..end] {
                 *color = selection_color;
@@ -1890,9 +1890,9 @@ impl<'a> Reader<'a> {
             pos..pos,
             vec![
                 if self.flash_autosuggestion {
-                    HighlightSpec::with_both(HighlightRole::search_match)
+                    HighlightSpec::with_both(HighlightRole::SearchMatch)
                 } else {
-                    HighlightSpec::with_fg(HighlightRole::autosuggestion)
+                    HighlightSpec::with_fg(HighlightRole::Autosuggestion)
                 };
                 autosuggested_range.len()
             ],
@@ -4639,8 +4639,8 @@ impl<'a> Reader<'a> {
             flash_range.end = data.colors.len();
         }
         for color in &mut data.colors[flash_range] {
-            color.foreground = HighlightRole::search_match;
-            color.background = HighlightRole::search_match;
+            color.foreground = HighlightRole::SearchMatch;
+            color.background = HighlightRole::SearchMatch;
         }
         self.rendered_layout = data;
         self.paint_layout(L!("flash"), false);

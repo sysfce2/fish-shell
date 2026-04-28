@@ -91,9 +91,9 @@ str_enum!(
 /// Values that may be returned from the test-feature option to status.
 #[repr(i32)]
 enum TestFeatureRetVal {
-    TEST_FEATURE_ON,
-    TEST_FEATURE_OFF,
-    TEST_FEATURE_NOT_RECOGNIZED,
+    On,
+    Off,
+    NotRecognized,
 }
 
 struct StatusCmdOpts {
@@ -431,12 +431,12 @@ pub fn status(parser: &Parser, streams: &mut IoStreams, args: &mut [&wstr]) -> B
                     .finish(streams);
                 return Err(STATUS_INVALID_ARGS);
             }
-            let mut retval = TestFeatureRetVal::TEST_FEATURE_NOT_RECOGNIZED;
+            let mut retval = TestFeatureRetVal::NotRecognized;
             for md in features::METADATA {
                 if md.name == args[0] {
                     retval = match feature_test(md.flag) {
-                        true => TestFeatureRetVal::TEST_FEATURE_ON,
-                        false => TestFeatureRetVal::TEST_FEATURE_OFF,
+                        true => TestFeatureRetVal::On,
+                        false => TestFeatureRetVal::Off,
                     };
                 }
             }

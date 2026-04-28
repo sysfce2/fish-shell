@@ -210,8 +210,8 @@ impl<'a> ExecutionContext<'a> {
         // Check for stack overflow in case of function calls (regular stack overflow) or string
         // substitution blocks, which can be recursively called with eval (issue #9302).
         let block_type = ctx.parser().block_with_id(associated_block).typ();
-        if (block_type == BlockType::top && ctx.parser().function_stack_is_overflowing())
-            || (block_type == BlockType::subst && ctx.parser().is_eval_depth_exceeded())
+        if (block_type == BlockType::Top && ctx.parser().function_stack_is_overflowing())
+            || (block_type == BlockType::Subst && ctx.parser().is_eval_depth_exceeded())
         {
             return report_error!(
                 self,
@@ -241,7 +241,7 @@ impl<'a> ExecutionContext<'a> {
         if ld.returning {
             return Some(EndExecutionReason::ControlFlow);
         }
-        if ld.loop_status != LoopStatus::normals {
+        if ld.loop_status != LoopStatus::Normals {
             return Some(EndExecutionReason::ControlFlow);
         }
         None
@@ -327,8 +327,12 @@ impl<'a> ExecutionContext<'a> {
         let mut event_args = vec![];
         {
             let args = Self::get_argument_nodes_no_redirs(&statement.args_or_redirs);
-            let arg_result =
-                self.expand_arguments_from_nodes(ctx, &args, &mut event_args, Globspec::failglob);
+            let arg_result = self.expand_arguments_from_nodes(
+                ctx,
+                &args,
+                &mut event_args,
+                WildcardNoMatchBehavior::Fail,
+            );
             if arg_result != EndExecutionReason::Ok {
                 return arg_result;
             }
@@ -400,7 +404,7 @@ impl<'a> ExecutionContext<'a> {
         let parent;
         let parent_fn_name = {
             match (parser.block_at_index(0), parser.block_at_index(1)) {
-                (Some(current), Some(p)) if current.typ() == BlockType::top => {
+                (Some(current), Some(p)) if current.typ() == BlockType::Top => {
                     parent = p;
                     match parent.data() {
                         Some(BlockData::Function { name, .. }) => name,
@@ -806,9 +810,9 @@ impl<'a> ExecutionContext<'a> {
         } else {
             // Not implicit cd.
             let glob_behavior = if [L!("set"), L!("count"), L!("path")].contains(&&cmd[..]) {
-                Globspec::nullglob
+                WildcardNoMatchBehavior::Allow
             } else {
-                Globspec::failglob
+                WildcardNoMatchBehavior::Fail
             };
             // Form the list of arguments. The command is the first argument, followed by any arguments
             // from expanding the command, followed by the argument nodes themselves. E.g. if the
@@ -918,8 +922,12 @@ impl<'a> ExecutionContext<'a> {
         // Get the contents to iterate over.
         let mut arguments = vec![];
         let arg_nodes = Self::get_argument_nodes(&header.args);
-        let ret =
-            self.expand_arguments_from_nodes(ctx, &arg_nodes, &mut arguments, Globspec::nullglob);
+        let ret = self.expand_arguments_from_nodes(
+            ctx,
+            &arg_nodes,
+            &mut arguments,
+            WildcardNoMatchBehavior::Allow,
+        );
         if ret != EndExecutionReason::Ok {
             return ret;
         }
@@ -968,7 +976,7 @@ impl<'a> ExecutionContext<'a> {
             );
             event::fire(ctx.parser(), evt.clone());
 
-            ctx.parser().libdata_mut().loop_status = LoopStatus::normals;
+            ctx.parser().libdata_mut().loop_status = LoopStatus::Normals;
 
             // Push and pop the block again and again to clear variables
             let fb = ctx.parser().push_block(Block::for_block());
@@ -977,8 +985,8 @@ impl<'a> ExecutionContext<'a> {
 
             if self.check_end_execution(ctx) == Some(EndExecutionReason::ControlFlow) {
                 // Handle break or continue.
-                let do_break = ctx.parser().libdata().loop_status == LoopStatus::breaks;
-                ctx.parser().libdata_mut().loop_status = LoopStatus::normals;
+                let do_break = ctx.parser().libdata().loop_status == LoopStatus::Breaks;
+                ctx.parser().libdata_mut().loop_status = LoopStatus::Normals;
                 if do_break {
                     break;
                 }
@@ -1160,7 +1168,7 @@ impl<'a> ExecutionContext<'a> {
                 ctx,
                 &arg_nodes,
                 &mut case_args,
-                Globspec::failglob,
+                WildcardNoMatchBehavior::Fail,
             );
             if case_result == EndExecutionReason::Ok {
                 for arg in case_args {
@@ -1245,7 +1253,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             // Push a while block and then check its cancellation reason.
-            ctx.parser().libdata_mut().loop_status = LoopStatus::normals;
+            ctx.parser().libdata_mut().loop_status = LoopStatus::Normals;
 
             let wb = ctx.parser().push_block(Block::while_block());
             self.run_job_list(ctx, contents, Some(wb));
@@ -1254,8 +1262,8 @@ impl<'a> ExecutionContext<'a> {
 
             if cancel_reason == Some(EndExecutionReason::ControlFlow) {
                 // Handle break or continue.
-                let do_break = ctx.parser().libdata().loop_status == LoopStatus::breaks;
-                ctx.parser().libdata_mut().loop_status = LoopStatus::normals;
+                let do_break = ctx.parser().libdata().loop_status == LoopStatus::Breaks;
+                ctx.parser().libdata_mut().loop_status = LoopStatus::Normals;
                 if do_break {
                     break;
                 } else {
@@ -1284,8 +1292,12 @@ impl<'a> ExecutionContext<'a> {
         let mut arguments = vec![];
         let mut arg_nodes = Self::get_argument_nodes(&header.args);
         arg_nodes.insert(0, &header.first_arg);
-        let result =
-            self.expand_arguments_from_nodes(ctx, &arg_nodes, &mut arguments, Globspec::failglob);
+        let result = self.expand_arguments_from_nodes(
+            ctx,
+            &arg_nodes,
+            &mut arguments,
+            WildcardNoMatchBehavior::Fail,
+        );
 
         if result != EndExecutionReason::Ok {
             return result;
@@ -1328,7 +1340,7 @@ impl<'a> ExecutionContext<'a> {
         trace_if_enabled(ctx.parser(), L!("begin"));
         let sb = ctx
             .parser()
-            .push_block(Block::scope_block(BlockType::begin));
+            .push_block(Block::scope_block(BlockType::Begin));
         let ret = self.run_job_list(ctx, contents, Some(sb));
         ctx.parser().pop_block(sb);
         trace_if_enabled(ctx.parser(), L!("end begin"));
@@ -1358,7 +1370,7 @@ impl<'a> ExecutionContext<'a> {
         ctx: &OperationContext<'_>,
         argument_nodes: &AstArgsList<'_>,
         out_arguments: &mut Vec<WString>,
-        glob_behavior: Globspec,
+        glob_behavior: WildcardNoMatchBehavior,
     ) -> EndExecutionReason {
         // Get all argument nodes underneath the statement. We guess we'll have that many arguments (but
         // may have more or fewer, if there are wildcards involved).
@@ -1386,7 +1398,7 @@ impl<'a> ExecutionContext<'a> {
                     return EndExecutionReason::Cancelled;
                 }
                 ExpandResultCode::wildcard_no_match => {
-                    if glob_behavior == Globspec::failglob {
+                    if glob_behavior == WildcardNoMatchBehavior::Fail {
                         // For no_exec, ignore the error - this might work at runtime.
                         if no_exec() {
                             return EndExecutionReason::Ok;
@@ -1908,9 +1920,11 @@ impl<'a> ExecutionContext<'a> {
 }
 
 #[derive(Eq, PartialEq)]
-enum Globspec {
-    failglob,
-    nullglob,
+enum WildcardNoMatchBehavior {
+    /// failglob
+    Fail,
+    /// nullglob
+    Allow,
 }
 type AstArgsList<'a> = Vec<&'a ast::Argument>;
 

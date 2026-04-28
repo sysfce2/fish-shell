@@ -1965,11 +1965,11 @@ impl<'s> Populator<'s> {
     /// Return the parser's status.
     fn status(&mut self) -> ParserStatus {
         if self.unwinding {
-            ParserStatus::unwinding
+            ParserStatus::Unwinding
         } else if self.flags.leave_unterminated && self.peek_type(0) == ParseTokenType::Terminate {
-            ParserStatus::unsourcing
+            ParserStatus::Unsourcing
         } else {
-            ParserStatus::ok
+            ParserStatus::Ok
         }
     }
 
@@ -1977,7 +1977,7 @@ impl<'s> Populator<'s> {
     fn unsource_leaves(&mut self) -> bool {
         matches!(
             self.status(),
-            ParserStatus::unsourcing | ParserStatus::unwinding
+            ParserStatus::Unsourcing | ParserStatus::Unwinding
         )
     }
 
@@ -2734,15 +2734,15 @@ impl<'s> Populator<'s> {
 /// The status of our parser.
 enum ParserStatus {
     /// Parsing is going just fine, thanks for asking.
-    ok,
+    Ok,
 
     /// We have exhausted the token stream, but the caller was OK with an incomplete parse tree.
     /// All further leaf nodes should have the unsourced flag set.
-    unsourcing,
+    Unsourcing,
 
     /// We encountered an parse error and are "unwinding."
     /// Do not consume any tokens until we get back to a list type which stops unwinding.
-    unwinding,
+    Unwinding,
 }
 
 /// Return tokenizer flags corresponding to parse tree flags.

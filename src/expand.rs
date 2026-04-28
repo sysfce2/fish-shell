@@ -395,8 +395,8 @@ fn is_quotable(s: &wstr) -> bool {
 }
 
 enum ParseSliceError {
-    zero_index,
-    invalid_index,
+    ZeroIndex,
+    InvalidIndex,
 }
 
 /// Parse an array slicing specification Returns 0 on success. If a parse error occurs, returns the
@@ -432,7 +432,7 @@ fn parse_slice(
                         // not we're going to show an error if the index ultimately evaluates
                         // to zero. This will help newcomers to fish avoid a common off-by-one
                         // error. See #4862.
-                        return Err((pos, ParseSliceError::zero_index));
+                        return Err((pos, ParseSliceError::ZeroIndex));
                     }
                     pos += consumed;
                     // Skip trailing whitespace.
@@ -446,7 +446,7 @@ fn parse_slice(
                     // We don't test `*end` as is typically done because we expect it to not
                     // be the null char. Ignore the case of errno==-1 because it means the end
                     // char wasn't the null char.
-                    return Err((pos, ParseSliceError::invalid_index));
+                    return Err((pos, ParseSliceError::InvalidIndex));
                 }
             }
         };
@@ -473,7 +473,7 @@ fn parse_slice(
                 match wcstoi_partial(&input[pos..], Options::default(), &mut consumed) {
                     Ok(tmp) => {
                         if tmp == 0 {
-                            return Err((pos, ParseSliceError::zero_index));
+                            return Err((pos, ParseSliceError::ZeroIndex));
                         }
                         pos += consumed;
                         // Skip trailing whitespace.
@@ -484,7 +484,7 @@ fn parse_slice(
                         tmp
                     }
                     Err(_error) => {
-                        return Err((pos, ParseSliceError::invalid_index));
+                        return Err((pos, ParseSliceError::InvalidIndex));
                     }
                 }
             };
@@ -645,14 +645,14 @@ fn expand_variables(
             }
             Err((bad_pos, error)) => {
                 match error {
-                    ParseSliceError::zero_index => {
+                    ParseSliceError::ZeroIndex => {
                         append_syntax_error!(
                             errors,
                             slice_start + bad_pos,
                             "array indices start at 1, not 0."
                         );
                     }
-                    ParseSliceError::invalid_index => {
+                    ParseSliceError::InvalidIndex => {
                         append_syntax_error!(errors, slice_start + bad_pos, "Invalid index value");
                     }
                 }
@@ -988,14 +988,14 @@ pub fn expand_cmdsubst(
             Ok(offset) => slice_begin + offset,
             Err((bad_pos, error)) => {
                 match error {
-                    ParseSliceError::zero_index => {
+                    ParseSliceError::ZeroIndex => {
                         append_syntax_error!(
                             errors,
                             slice_begin + bad_pos,
                             "array indices start at 1, not 0."
                         );
                     }
-                    ParseSliceError::invalid_index => {
+                    ParseSliceError::InvalidIndex => {
                         append_syntax_error!(errors, slice_begin + bad_pos, "Invalid index value");
                     }
                 }

@@ -77,7 +77,6 @@ rust-embed = { version = "8.11.0", features = [
 ] }
 rustc_version = "0.4.1"
 serial_test = { version = "3", default-features = false }
-strum_macros = "0.28.0"
 widestring = "1.2.0"
 unicode-segmentation = "1.12.0"
 unicode-width = "0.2.0"
@@ -132,7 +131,6 @@ num-traits.workspace = true
 once_cell.workspace = true
 pcre2.workspace = true
 rand.workspace = true
-strum_macros.workspace = true
 xterm-color.workspace = true
 
 [target.'cfg(not(target_has_atomic = "64"))'.dependencies]
@@ -199,7 +197,6 @@ gettext-extract = ["dep:fish-gettext-extraction"]
 tsan = []
 
 [workspace.lints]
-rust.non_camel_case_types = "allow"
 rust.unknown_lints = { level = "allow", priority = -1 }
 rust.unstable_name_collisions = "allow"
 rustdoc.private_intra_doc_links = "allow"

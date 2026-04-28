@@ -90,7 +90,7 @@ impl Block {
 
     #[inline(always)]
     pub fn wants_pop_env(&self) -> bool {
-        self.typ() != BlockType::top
+        self.typ() != BlockType::Top
     }
 
     /// Return the 1-based line number of this block, using a cache.
@@ -111,18 +111,18 @@ impl Block {
     /// Description of the block, for debugging.
     pub fn description(&self) -> WString {
         let mut result = match self.typ() {
-            BlockType::while_block => L!("while"),
-            BlockType::for_block => L!("for"),
-            BlockType::if_block => L!("if"),
-            BlockType::function_call { .. } => L!("function_call"),
-            BlockType::switch_block => L!("switch"),
-            BlockType::subst => L!("substitution"),
-            BlockType::top => L!("top"),
-            BlockType::begin => L!("begin"),
-            BlockType::source => L!("source"),
-            BlockType::event => L!("event"),
-            BlockType::breakpoint => L!("breakpoint"),
-            BlockType::variable_assignment => L!("variable_assignment"),
+            BlockType::WhileBlock => L!("while"),
+            BlockType::ForBlock => L!("for"),
+            BlockType::IfBlock => L!("if"),
+            BlockType::FunctionCall { .. } => L!("function_call"),
+            BlockType::SwitchBlock => L!("switch"),
+            BlockType::Subst => L!("substitution"),
+            BlockType::Top => L!("top"),
+            BlockType::Begin => L!("begin"),
+            BlockType::Source => L!("source"),
+            BlockType::Event => L!("event"),
+            BlockType::Breakpoint => L!("breakpoint"),
+            BlockType::VariableAssignment => L!("variable_assignment"),
         }
         .to_owned();
 
@@ -141,49 +141,49 @@ impl Block {
 
     /// Return if we are a function call (with or without shadowing).
     pub fn is_function_call(&self) -> bool {
-        matches!(self.typ(), BlockType::function_call { .. })
+        matches!(self.typ(), BlockType::FunctionCall { .. })
     }
 
     /// Entry points for creating blocks.
     pub fn if_block() -> Block {
-        Block::new(BlockType::if_block)
+        Block::new(BlockType::IfBlock)
     }
     pub fn event_block(event: Event) -> Block {
-        let mut b = Block::new(BlockType::event);
+        let mut b = Block::new(BlockType::Event);
         b.data = Some(Box::new(BlockData::Event(Rc::new(event))));
         b
     }
     pub fn function_block(name: WString, args: Vec<WString>, shadows: bool) -> Block {
-        let mut b = Block::new(BlockType::function_call { shadows });
+        let mut b = Block::new(BlockType::FunctionCall { shadows });
         b.data = Some(Box::new(BlockData::Function { name, args }));
         b
     }
     pub fn source_block(src: FilenameRef) -> Block {
-        let mut b = Block::new(BlockType::source);
+        let mut b = Block::new(BlockType::Source);
         b.data = Some(Box::new(BlockData::Source { file: src }));
         b
     }
     pub fn for_block() -> Block {
-        Block::new(BlockType::for_block)
+        Block::new(BlockType::ForBlock)
     }
     pub fn while_block() -> Block {
-        Block::new(BlockType::while_block)
+        Block::new(BlockType::WhileBlock)
     }
     pub fn switch_block() -> Block {
-        Block::new(BlockType::switch_block)
+        Block::new(BlockType::SwitchBlock)
     }
     pub fn scope_block(typ: BlockType) -> Block {
         assert!(
-            [BlockType::begin, BlockType::top, BlockType::subst].contains(&typ),
+            [BlockType::Begin, BlockType::Top, BlockType::Subst].contains(&typ),
             "Invalid scope type"
         );
         Block::new(typ)
     }
     pub fn breakpoint_block() -> Block {
-        Block::new(BlockType::breakpoint)
+        Block::new(BlockType::Breakpoint)
     }
     pub fn variable_assignment_block() -> Block {
-        Block::new(BlockType::variable_assignment)
+        Block::new(BlockType::VariableAssignment)
     }
 }
 
@@ -364,12 +364,6 @@ impl EvalRes {
     }
 }
 
-pub enum ParserStatusVar {
-    current_command,
-    current_commandline,
-    count_,
-}
-
 /// A newtype for the block index.
 /// This is the naive position in the block list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -481,7 +475,7 @@ impl Parser {
     pub fn is_function(&self) -> bool {
         self.blocks_iter_rev()
             // If a function sources a file, don't descend further.
-            .take_while(|b| b.typ() != BlockType::source)
+            .take_while(|b| b.typ() != BlockType::Source)
             .any(|b| b.is_function_call())
     }
 
@@ -489,12 +483,12 @@ impl Parser {
     pub fn is_command_substitution(&self) -> bool {
         self.blocks_iter_rev()
             // If a function sources a file, don't descend further.
-            .take_while(|b| b.typ() != BlockType::source)
-            .any(|b| b.typ() == BlockType::subst)
+            .take_while(|b| b.typ() != BlockType::Source)
+            .any(|b| b.typ() == BlockType::Subst)
     }
 
     pub fn eval(&self, cmd: &wstr, io: &IoChain) -> EvalRes {
-        self.eval_with(cmd, io, None, BlockType::top, false)
+        self.eval_with(cmd, io, None, BlockType::Top, false)
     }
 
     /// Evaluate the expressions contained in cmd.
@@ -557,7 +551,7 @@ impl Parser {
         block_type: BlockType,
         test_only_suppress_stderr: bool,
     ) -> EvalRes {
-        assert_matches!(block_type, BlockType::top | BlockType::subst);
+        assert_matches!(block_type, BlockType::Top | BlockType::Subst);
         let job_list = ps.top_job_list();
         if !job_list.is_empty() {
             // Execute the top job list.
@@ -618,7 +612,7 @@ impl Parser {
             .library_data
             .scoped_set(Some(filename), |s| &mut s.current_filename);
 
-        let ret = self.eval_wstr(src, io, job_group, BlockType::top);
+        let ret = self.eval_wstr(src, io, job_group, BlockType::Top);
 
         self.pop_block(sb);
         self.libdata_mut().exit_current_script = false;
@@ -638,7 +632,7 @@ impl Parser {
         // Only certain blocks are allowed.
         assert_matches!(
             block_type,
-            BlockType::top | BlockType::subst,
+            BlockType::Top | BlockType::Subst,
             "Invalid block type"
         );
 
@@ -831,9 +825,9 @@ impl Parser {
         // Note historically this has descended into 'source', unlike 'is_function'.
         self.blocks_iter_rev().any(|b| {
             ![
-                BlockType::top,
-                BlockType::subst,
-                BlockType::variable_assignment,
+                BlockType::Top,
+                BlockType::Subst,
+                BlockType::VariableAssignment,
             ]
             .contains(&b.typ())
         })
@@ -842,7 +836,7 @@ impl Parser {
     /// Return whether we have a breakpoint block.
     pub fn is_breakpoint(&self) -> bool {
         self.blocks_iter_rev()
-            .any(|b| b.typ() == BlockType::breakpoint)
+            .any(|b| b.typ() == BlockType::Breakpoint)
     }
 
     // Return an iterator over the blocks, in reverse order.
@@ -1015,8 +1009,8 @@ impl Parser {
     pub fn push_block(&self, mut block: Block) -> BlockId {
         block.src_filename = self.current_filename();
         block.src_node.clone_from(&self.current_node.borrow());
-        if block.typ() != BlockType::top {
-            let new_scope = block.typ() == BlockType::function_call { shadows: true };
+        if block.typ() != BlockType::Top {
+            let new_scope = block.typ() == BlockType::FunctionCall { shadows: true };
             self.vars().push(new_scope);
         }
 
@@ -1045,7 +1039,7 @@ impl Parser {
             // Walk until we find a breakpoint, then take the next function.
             return self
                 .blocks_iter_rev()
-                .skip_while(|b| b.typ() != BlockType::breakpoint)
+                .skip_while(|b| b.typ() != BlockType::Breakpoint)
                 .find_map(|b| match b.data() {
                     Some(BlockData::Function { name, .. }) => Some(name.clone()),
                     _ => None,
@@ -1055,7 +1049,7 @@ impl Parser {
         self.blocks_iter_rev()
             // Historical: If we want the topmost function, but we are really in a file sourced by a
             // function, don't consider ourselves to be in a function.
-            .take_while(|b| !(level == 1 && b.typ() == BlockType::source))
+            .take_while(|b| !(level == 1 && b.typ() == BlockType::Source))
             .map(|b| (b, 0))
             .map(|(b, level)| {
                 if b.is_function_call() {
@@ -1224,7 +1218,7 @@ impl Parser {
             // It might make sense in the future to continue printing the stack trace of the code
             // that invoked the event, if this is a programmatic event, but we can't currently
             // detect that.
-            .take_while(|b| b.typ() != BlockType::event)
+            .take_while(|b| b.typ() != BlockType::Event)
             .fold(WString::new(), |mut trace, b| {
                 append_block_description_to_stack_trace(self, &b, &mut trace, &mut line_cache);
                 trace
@@ -1361,7 +1355,7 @@ fn append_block_description_to_stack_trace(
 ) {
     let mut print_source_location = false;
     match b.typ() {
-        BlockType::function_call { .. } => {
+        BlockType::FunctionCall { .. } => {
             let Some(BlockData::Function { name, args, .. }) = b.data() else {
                 unreachable!()
             };
@@ -1391,12 +1385,12 @@ fn append_block_description_to_stack_trace(
             trace.push('\n');
             print_source_location = true;
         }
-        BlockType::subst => {
+        BlockType::Subst => {
             trace.push_utfstr(&wgettext!("in command substitution"));
             trace.push('\n');
             print_source_location = true;
         }
-        BlockType::source => {
+        BlockType::Source => {
             let Some(BlockData::Source { file, .. }) = b.data() else {
                 unreachable!()
             };
@@ -1408,7 +1402,7 @@ fn append_block_description_to_stack_trace(
             trace.push('\n');
             print_source_location = true;
         }
-        BlockType::event => {
+        BlockType::Event => {
             let Some(BlockData::Event(event)) = b.data() else {
                 unreachable!()
             };
@@ -1417,14 +1411,14 @@ fn append_block_description_to_stack_trace(
             trace.push('\n');
             print_source_location = true;
         }
-        BlockType::top
-        | BlockType::begin
-        | BlockType::switch_block
-        | BlockType::while_block
-        | BlockType::for_block
-        | BlockType::if_block
-        | BlockType::breakpoint
-        | BlockType::variable_assignment => {}
+        BlockType::Top
+        | BlockType::Begin
+        | BlockType::SwitchBlock
+        | BlockType::WhileBlock
+        | BlockType::ForBlock
+        | BlockType::IfBlock
+        | BlockType::Breakpoint
+        | BlockType::VariableAssignment => {}
     }
 
     if print_source_location {
@@ -1444,30 +1438,30 @@ fn append_block_description_to_stack_trace(
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BlockType {
     /// While loop block
-    while_block,
+    WhileBlock,
     /// For loop block
-    for_block,
+    ForBlock,
     /// If block
-    if_block,
+    IfBlock,
     /// Function invocation block
-    function_call { shadows: bool },
+    FunctionCall { shadows: bool },
     /// Switch block
-    switch_block,
+    SwitchBlock,
     /// Command substitution scope
-    subst,
+    Subst,
     /// Outermost block
     #[default]
-    top,
+    Top,
     /// Unconditional block
-    begin,
+    Begin,
     /// Block created by the . (source) builtin
-    source,
+    Source,
     /// Block created on event notifier invocation
-    event,
+    Event,
     /// Breakpoint block
-    breakpoint,
+    Breakpoint,
     /// Variable assignment before a command
-    variable_assignment,
+    VariableAssignment,
 }
 
 /// Possible states for a loop.
@@ -1475,11 +1469,11 @@ pub enum BlockType {
 pub enum LoopStatus {
     /// current loop block executed as normal
     #[default]
-    normals,
+    Normals,
     /// current loop block should be removed
-    breaks,
+    Breaks,
     /// current loop block should be skipped
-    continues,
+    Continues,
 }
 
 #[cfg(test)]

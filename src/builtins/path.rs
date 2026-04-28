@@ -151,7 +151,7 @@ fn path_out(streams: &mut IoStreams, opts: &Options<'_>, s: impl AsRef<wstr>) {
         if !opts.null_out {
             streams
                 .out
-                .append_with_separation(s, SeparationType::explicitly, true);
+                .append_with_separation(s, SeparationType::Explicitly, true);
         } else {
             let mut output = WString::with_capacity(s.len() + 1);
             output.push_utfstr(s);

@@ -268,14 +268,14 @@ impl<'args> StringSubCommand<'args> for Split<'args> {
                     if let Some(val) = splits.get(*field) {
                         streams
                             .out
-                            .append_with_separation(val, SeparationType::explicitly, true);
+                            .append_with_separation(val, SeparationType::Explicitly, true);
                     }
                 }
             } else {
                 for split in splits {
                     streams
                         .out
-                        .append_with_separation(&split, SeparationType::explicitly, true);
+                        .append_with_separation(&split, SeparationType::Explicitly, true);
                 }
             }
         }

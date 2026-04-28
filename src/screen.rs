@@ -466,7 +466,7 @@ impl Screen {
                         && self.desired.line_datas[y]
                             .color_at(self.desired.line_datas[y].len() - 1)
                             .foreground
-                            == HighlightRole::autosuggestion
+                            == HighlightRole::Autosuggestion
                 })
             {
                 1

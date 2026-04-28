@@ -204,7 +204,7 @@ fn run_command_list(parser: &Parser, cmds: &[OsString]) -> Result<(), libc::c_in
         if !errored {
             // Construct a parsed source ref.
             let ps = Arc::new(ParsedSource::new(cmd_wcs, ast));
-            let _ = parser.eval_parsed_source(&ps, &IoChain::new(), None, BlockType::top, false);
+            let _ = parser.eval_parsed_source(&ps, &IoChain::new(), None, BlockType::Top, false);
             retval = Ok(());
         } else {
             let backtrace = parser.get_backtrace(&cmd_wcs, &errors);

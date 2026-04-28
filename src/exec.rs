@@ -1023,7 +1023,7 @@ fn get_performer_for_block_node(p: &Process, job: &Job, io_chain: &IoChain) -> B
     let node = node.clone();
     Box::new(move |parser: &Parser, _out, _err| {
         parser
-            .eval_node(&node, &io_chain, job_group.as_ref(), BlockType::top, false)
+            .eval_node(&node, &io_chain, job_group.as_ref(), BlockType::Top, false)
             .status
     })
 }
@@ -1063,7 +1063,7 @@ fn get_performer_for_function(
             &body_node,
             &io_chain,
             job_group.as_ref(),
-            BlockType::top,
+            BlockType::Top,
             false,
         );
         function_restore_environment(parser, fb);
@@ -1524,7 +1524,7 @@ fn exec_subshell_internal(
 
     let mut io_chain = IoChain::new();
     io_chain.push(bufferfill.clone());
-    let eval_res = parser.eval_with(cmd, &io_chain, job_group, BlockType::subst, false);
+    let eval_res = parser.eval_with(cmd, &io_chain, job_group, BlockType::Subst, false);
     let buffer = IoBufferfill::finish(bufferfill);
     if buffer.discarded() {
         *break_expand = true;

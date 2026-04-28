@@ -25,7 +25,7 @@ pub fn breakpoint(parser: &Parser, streams: &mut IoStreams, argv: &mut [&wstr]) 
     {
         if parser
             .block_at_index(1)
-            .is_none_or(|b| b.typ() == BlockType::breakpoint)
+            .is_none_or(|b| b.typ() == BlockType::Breakpoint)
         {
             err_str!("Command not valid at an interactive prompt")
                 .cmd(cmd)

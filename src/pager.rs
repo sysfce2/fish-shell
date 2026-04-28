@@ -293,7 +293,7 @@ impl Pager {
 
         if !progress_text.is_empty() {
             let line = rendering.screen_data.add_line();
-            let spec = HighlightSpec::with_both(HighlightRole::pager_progress);
+            let spec = HighlightSpec::with_both(HighlightRole::PagerProgress);
             print_max(
                 CharOffset::None,
                 progress_text.chars(),
@@ -505,29 +505,29 @@ impl Pager {
         let modify_role = |role: HighlightRole| {
             let mut base = role as u8;
             if selected {
-                base += HighlightRole::pager_selected_background as u8
-                    - HighlightRole::pager_background as u8;
+                base += HighlightRole::PagerSelectedBackground as u8
+                    - HighlightRole::PagerBackground as u8;
             } else if secondary {
-                base += HighlightRole::pager_secondary_background as u8
-                    - HighlightRole::pager_background as u8;
+                base += HighlightRole::PagerSecondaryBackground as u8
+                    - HighlightRole::PagerBackground as u8;
             }
             unsafe { std::mem::transmute(base) }
         };
 
-        let bg_role = modify_role(HighlightRole::pager_background);
+        let bg_role = modify_role(HighlightRole::PagerBackground);
         let bg = HighlightSpec::with_bg(bg_role);
         let prefix_col = HighlightSpec::with_fg_bg(
             modify_role(if self.highlight_prefix {
-                HighlightRole::pager_prefix
+                HighlightRole::PagerPrefix
             } else {
-                HighlightRole::pager_completion
+                HighlightRole::PagerCompletion
             }),
             bg_role,
         );
         let comp_col =
-            HighlightSpec::with_fg_bg(modify_role(HighlightRole::pager_completion), bg_role);
+            HighlightSpec::with_fg_bg(modify_role(HighlightRole::PagerCompletion), bg_role);
         let desc_col =
-            HighlightSpec::with_fg_bg(modify_role(HighlightRole::pager_description), bg_role);
+            HighlightSpec::with_fg_bg(modify_role(HighlightRole::PagerDescription), bg_role);
 
         // Print the completion part
         let mut comp_remaining = comp_width;
@@ -605,9 +605,9 @@ impl Pager {
             assert!(desc_remaining >= 2);
             let paren_col = HighlightSpec::with_fg_bg(
                 if selected {
-                    HighlightRole::pager_selected_completion
+                    HighlightRole::PagerSelectedCompletion
                 } else {
-                    HighlightRole::pager_completion
+                    HighlightRole::PagerCompletion
                 },
                 bg_role,
             );
