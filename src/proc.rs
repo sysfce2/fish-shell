@@ -40,7 +40,7 @@ use nix::{
 use std::{
     cell::{Cell, Ref, RefCell, RefMut},
     fs,
-    io::{Read as _, Write as _},
+    io::Write as _,
     num::NonZeroU32,
     os::fd::RawFd,
     rc::Rc,
@@ -1039,14 +1039,9 @@ pub fn proc_get_jiffies(inpid: Pid) -> ClockTicks {
     }
 
     let filename = format!("/proc/{}/stat", inpid);
-    let Ok(mut f) = fs::File::open(filename) else {
+    let Ok(buf) = fs::read(filename) else {
         return 0;
     };
-
-    let mut buf = vec![];
-    if f.read_to_end(&mut buf).is_err() {
-        return 0;
-    }
 
     let mut timesstrs = buf.split(|c| *c == b' ').skip(13);
     let mut sum = 0;
