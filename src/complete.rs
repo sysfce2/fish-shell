@@ -1675,7 +1675,7 @@ impl<'ctx> Completer<'ctx> {
                 // $history can be huge, don't put all of it in the completion description; see
                 // #6288.
                 if env_name == "history" {
-                    let history = History::with_name(&history_session_id(self.ctx.vars()));
+                    let history = History::new(&history_session_id(self.ctx.vars()));
                     for i in 1..std::cmp::min(history.size(), 64) {
                         if i > 1 {
                             desc.push(' ');

@@ -374,7 +374,7 @@ impl EnvScopedImpl {
             let history = commandline_get_state(true).history.unwrap_or_else(|| {
                 let fish_history_var = self.getf(L!("fish_history"), EnvMode::default());
                 let session_id = history_session_id_from_var(fish_history_var);
-                History::with_name(&session_id)
+                History::new(&session_id)
             });
             Some(EnvVar::new_from_name_vec(
                 L!("history"),

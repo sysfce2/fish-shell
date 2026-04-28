@@ -398,7 +398,7 @@ pub fn reader_push<'a>(parser: &'a Parser, history_name: &wstr, conf: ReaderConf
     } else {
         InputData::new(inputfd, *parser.blocking_query_timeout.borrow())
     };
-    let hist = History::with_name(history_name);
+    let hist = History::new(history_name);
     hist.resolve_pending();
     let data = ReaderData::new(input_data, hist, conf, reader_data_stack().is_empty());
     reader_data_stack().push(data);
@@ -427,7 +427,7 @@ pub fn fake_scoped_reader<'a>(parser: &'a Parser) -> impl ScopeGuarding<Target =
         inputfd,
         ..Default::default()
     };
-    let hist = History::with_name(L!(""));
+    let hist = History::new(L!(""));
     let input_data = InputData::new(inputfd, None);
     let data = ReaderData::new(input_data, hist, conf, reader_data_stack().is_empty());
     reader_data_stack().push(data);
@@ -1059,7 +1059,7 @@ pub fn reader_change_history(name: &wstr) {
     };
 
     data.history.save();
-    data.history = History::with_name(name);
+    data.history = History::new(name);
     commandline_state_snapshot().history = Some(data.history.clone());
 }
 

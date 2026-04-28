@@ -567,7 +567,7 @@ fn list(opts: &Options, parser: &Parser, streams: &mut IoStreams) -> BuiltinResu
         if !names_only {
             let mut val = WString::new();
             if opts.shorten_ok && key == "history" {
-                let history = History::with_name(&history_session_id(parser.vars()));
+                let history = History::new(&history_session_id(parser.vars()));
                 for i in 1..history.size() {
                     if val.len() >= 64 {
                         break;

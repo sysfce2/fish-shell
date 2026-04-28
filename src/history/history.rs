@@ -1218,7 +1218,7 @@ impl History {
     /// Creates a new History with a custom directory path.
     /// The history file will be stored at `{directory}/{name}_history`.
     /// If the directory is None, it will be stored at path_get_data().
-    fn new(name: &wstr, directory: Option<WString>) -> Arc<Self> {
+    fn new_with_directory(name: &wstr, directory: Option<WString>) -> Arc<Self> {
         Arc::new(Self(Mutex::new(HistoryImpl::new(
             name.to_owned(),
             directory,
@@ -1228,13 +1228,13 @@ impl History {
     /// Returns the history with the given name, creating it if necessary, using the default data directory.
     /// This uses the HISTORIES global collection. Note it is possible to create a history without
     /// placing it into this collection.
-    pub fn with_name(name: &wstr) -> Arc<Self> {
+    pub fn new(name: &wstr) -> Arc<Self> {
         let mut histories = HISTORIES.lock().unwrap();
 
         if let Some(hist) = histories.get(name) {
             Arc::clone(hist)
         } else {
-            let hist = Self::new(name, None);
+            let hist = Self::new_with_directory(name, None);
             histories.insert(name.to_owned(), Arc::clone(&hist));
             hist
         }
@@ -1834,7 +1834,7 @@ mod tests {
 
     // Helper to create a history with a custom directory, for testing.
     fn create_test_history(name: &wstr, custom_dir: &wstr) -> Arc<History> {
-        History::new(name, Some(custom_dir.to_owned()))
+        History::new_with_directory(name, Some(custom_dir.to_owned()))
     }
 
     fn random_string(rng: &mut ThreadRng) -> WString {
@@ -2309,7 +2309,7 @@ mod tests {
         test_vars.set_one(L!("PWD"), global_mode, wdir_path.clone());
         test_vars.set_one(L!("HOME"), global_mode, wdir_path.clone());
 
-        let history = History::new(L!("path_detection"), hist_dir);
+        let history = History::new_with_directory(L!("path_detection"), hist_dir);
         history.clear();
         assert_eq!(history.size(), 0);
         history.add_pending_with_file_detection(

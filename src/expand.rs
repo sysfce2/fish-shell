@@ -613,7 +613,7 @@ fn expand_variables(
     let mut history = None;
     let mut var = None;
     if var_name == "history" {
-        history = Some(History::with_name(&history_session_id(vars)));
+        history = Some(History::new(&history_session_id(vars)));
     } else if var_name.as_char_slice() != [VARIABLE_EXPAND_EMPTY] {
         var = vars.get(var_name);
     }
