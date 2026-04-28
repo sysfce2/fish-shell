@@ -374,9 +374,11 @@ fn update_fish_color_support(vars: &EnvStack) {
     // Detect or infer term256 support. If fish_term256 is set, we respect it. Otherwise, infer it
     // from $TERM.
 
-    let term = vars.get_unless_empty(L!("TERM"));
-    let term = term.as_ref().map_or(L!(""), |term| &term.as_list()[0]);
-    let is_xterm_16color = term == "xterm-16color";
+    let is_xterm_16color = {
+        let term = vars.get_unless_empty(L!("TERM"));
+        let term = term.as_ref().map_or(L!(""), |term| &term.as_list()[0]);
+        term == "xterm-16color"
+    };
 
     let supports_256color = if let Some(fish_term256) = vars.get(L!("fish_term256")) {
         let ok = bool_from_string(&fish_term256.as_string());
