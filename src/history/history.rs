@@ -1218,7 +1218,7 @@ impl History {
     /// Creates a new History with a custom directory path.
     /// The history file will be stored at `{directory}/{name}_history`.
     /// If the directory is None, it will be stored at path_get_data().
-    pub fn new(name: &wstr, directory: Option<WString>) -> Arc<Self> {
+    fn new(name: &wstr, directory: Option<WString>) -> Arc<Self> {
         Arc::new(Self(Mutex::new(HistoryImpl::new(
             name.to_owned(),
             directory,
