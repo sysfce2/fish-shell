@@ -183,13 +183,19 @@ impl<'args, 'opts> StringReplacer<'args, 'opts> {
                     // allowed to be user-controlled here
                     .block_utf_pattern_directive(true)
                     .build(pattern.as_char_slice())
-                    .map_err(|e| RegexError::Compile(pattern.to_owned(), e))?;
+                    .map_err(|error| RegexError::Compile {
+                        pattern: pattern.to_owned(),
+                        error,
+                    })?;
 
                 let replacement = if feature_test(FeatureFlag::StringReplaceBackslash) {
                     replacement.to_owned()
                 } else {
-                    Self::interpret_escape(replacement)
-                        .ok_or_else(|| RegexError::InvalidEscape(replacement.to_owned()))?
+                    Self::interpret_escape(replacement).ok_or_else(|| {
+                        RegexError::InvalidEscape {
+                            replacement: replacement.to_owned(),
+                        }
+                    })?
                 };
                 Self::Regex {
                     replacement,

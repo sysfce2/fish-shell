@@ -234,7 +234,10 @@ impl<'opts, 'args> RegexMatcher<'opts, 'args> {
             // the capture group names are valid variable names
             .block_utf_pattern_directive(true)
             .build(pattern.as_char_slice())
-            .map_err(|e| RegexError::Compile(pattern.to_owned(), e))?;
+            .map_err(|error| RegexError::Compile {
+                pattern: pattern.to_owned(),
+                error,
+            })?;
 
         Self::validate_capture_group_names(regex.capture_names())?;
 
@@ -315,7 +318,7 @@ impl<'opts, 'args> RegexMatcher<'opts, 'args> {
         for name in capture_group_names.iter().filter_map(|n| n.as_ref()) {
             let wname = str2wcstring(name);
             if EnvVar::flags_for(&wname).contains(EnvVarFlags::READ_ONLY) {
-                return Err(RegexError::InvalidCaptureGroupName(wname));
+                return Err(RegexError::InvalidCaptureGroupName { name: wname });
             }
         }
         Ok(())

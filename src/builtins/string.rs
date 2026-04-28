@@ -152,9 +152,16 @@ enum StringError<'a> {
 }
 
 enum RegexError {
-    Compile(WString, pcre2::Error),
-    InvalidCaptureGroupName(WString),
-    InvalidEscape(WString),
+    Compile {
+        pattern: WString,
+        error: pcre2::Error,
+    },
+    InvalidCaptureGroupName {
+        name: WString,
+    },
+    InvalidEscape {
+        replacement: WString,
+    },
 }
 
 impl RegexError {
@@ -163,14 +170,15 @@ impl RegexError {
         let subcmd = args[0];
         use RegexError::*;
         match self {
-            Compile(pattern, e) => {
+            Compile { pattern, error } => {
                 // TODO: This is misaligned if `pattern` contains characters which are not exactly 1
                 // terminal cell wide.
-                let mut marker: WString =
-                    " ".repeat(e.offset().unwrap_or(0).saturating_sub(1)).into();
+                let mut marker: WString = " "
+                    .repeat(error.offset().unwrap_or(0).saturating_sub(1))
+                    .into();
                 marker.push('^');
 
-                err_fmt!(Error::REGEX_COMPILE, e.error_message())
+                err_fmt!(Error::REGEX_COMPILE, error.error_message())
                     .append_to_msg('\n')
                     .append_to_msg(&err_raw!(pattern).subcmd(cmd, subcmd).to_string())
                     .append_to_msg('\n')
@@ -178,15 +186,15 @@ impl RegexError {
                     .subcmd(cmd, subcmd)
                     .finish(streams);
             }
-            InvalidCaptureGroupName(name) => {
+            InvalidCaptureGroupName { name } => {
                 err_fmt!(
                     "Modification of read-only variable \"%s\" is not allowed",
                     name
                 )
                 .finish(streams);
             }
-            InvalidEscape(pattern) => {
-                err_fmt!("Invalid escape sequence in pattern \"%s\"", pattern)
+            InvalidEscape { replacement } => {
+                err_fmt!("Invalid escape sequence in pattern \"%s\"", replacement)
                     .subcmd(cmd, subcmd)
                     .finish(streams);
             }
