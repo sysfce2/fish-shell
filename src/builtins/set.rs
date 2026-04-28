@@ -6,7 +6,7 @@ use crate::{
     err_fmt, err_str,
     event::{self, Event},
     expand::{expand_escape_string, expand_escape_variable},
-    history::{History, history_session_id},
+    history::{History, history_id},
     parse_execution::varname_error,
     parser::ParserEnvSetMode,
     wutil::wcstoi::wcstoi_partial,
@@ -567,7 +567,7 @@ fn list(opts: &Options, parser: &Parser, streams: &mut IoStreams) -> BuiltinResu
         if !names_only {
             let mut val = WString::new();
             if opts.shorten_ok && key == "history" {
-                let history = History::new(&history_session_id(parser.vars()));
+                let history = History::new(history_id(parser.vars()));
                 for i in 1..history.size() {
                     if val.len() >= 64 {
                         break;

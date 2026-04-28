@@ -276,7 +276,19 @@ impl HistoryItem {
     }
 }
 
-static HISTORIES: Mutex<BTreeMap<WString, Arc<History>>> = Mutex::new(BTreeMap::new());
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
+pub enum MemoryHistoryId {
+    PrivateMode,
+    BuiltinRead,
+}
+
+#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
+pub enum HistoryId {
+    Memory(MemoryHistoryId),
+    Disk { session_id: WString },
+}
+
+static HISTORIES: Mutex<BTreeMap<HistoryId, Arc<History>>> = Mutex::new(BTreeMap::new());
 
 /// When deleting, whether the deletion should be only for this session or for all sessions.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1218,9 +1230,14 @@ impl History {
     /// Creates a new History with a custom directory path.
     /// The history file will be stored at `{directory}/{name}_history`.
     /// If the directory is None, it will be stored at path_get_data().
-    fn new_with_directory(name: &wstr, directory: Option<WString>) -> Arc<Self> {
+    fn new_with_directory(id: HistoryId, directory: Option<WString>) -> Arc<Self> {
         Arc::new(Self(Mutex::new(HistoryImpl::new(
-            name.to_owned(),
+            match id {
+                HistoryId::Memory(_) => WString::new(),
+                HistoryId::Disk {
+                    session_id: filename,
+                } => filename,
+            },
             directory,
         ))))
     }
@@ -1228,14 +1245,14 @@ impl History {
     /// Returns the history with the given name, creating it if necessary, using the default data directory.
     /// This uses the HISTORIES global collection. Note it is possible to create a history without
     /// placing it into this collection.
-    pub fn new(name: &wstr) -> Arc<Self> {
+    pub fn new(id: HistoryId) -> Arc<Self> {
         let mut histories = HISTORIES.lock().unwrap();
 
-        if let Some(hist) = histories.get(name) {
+        if let Some(hist) = histories.get(&id) {
             Arc::clone(hist)
         } else {
-            let hist = Self::new_with_directory(name, None);
-            histories.insert(name.to_owned(), Arc::clone(&hist));
+            let hist = Self::new_with_directory(id.clone(), None);
+            histories.insert(id, Arc::clone(&hist));
             hist
         }
     }
@@ -1693,17 +1710,23 @@ pub fn save_all() {
 }
 
 /// Return the prefix for the files to be used for command and read history.
-pub fn history_session_id(vars: &dyn Environment) -> WString {
-    history_session_id_from_var(vars.get(L!("fish_history")))
+pub fn history_id(vars: &dyn Environment) -> HistoryId {
+    history_id_from_var(vars.get(L!("fish_history")))
 }
 
-pub fn history_session_id_from_var(history_name_var: Option<EnvVar>) -> WString {
+pub fn history_id_from_var(history_name_var: Option<EnvVar>) -> HistoryId {
+    use HistoryId::*;
+    let default = || Disk {
+        session_id: DFLT_FISH_HISTORY_SESSION_ID.to_owned(),
+    };
     let Some(var) = history_name_var else {
-        return DFLT_FISH_HISTORY_SESSION_ID.to_owned();
+        return default();
     };
     let session_id = var.as_string();
-    if session_id.is_empty() || valid_var_name(&session_id) {
-        session_id
+    if session_id.is_empty() {
+        Memory(MemoryHistoryId::PrivateMode)
+    } else if valid_var_name(&session_id) {
+        Disk { session_id }
     } else {
         flog!(
             error,
@@ -1713,7 +1736,7 @@ pub fn history_session_id_from_var(history_name_var: Option<EnvVar>) -> WString 
                 DFLT_FISH_HISTORY_SESSION_ID
             ),
         );
-        DFLT_FISH_HISTORY_SESSION_ID.to_owned()
+        default()
     }
 }
 
@@ -1803,6 +1826,7 @@ mod tests {
         common::ESCAPE_TEST_CHAR,
         env::{EnvMode, EnvSetMode, EnvStack},
         fs::{LockedFile, WriteMethod},
+        history::HistoryId,
         prelude::*,
         tests::prelude::test_init,
     };
@@ -1834,7 +1858,12 @@ mod tests {
 
     // Helper to create a history with a custom directory, for testing.
     fn create_test_history(name: &wstr, custom_dir: &wstr) -> Arc<History> {
-        History::new_with_directory(name, Some(custom_dir.to_owned()))
+        History::new_with_directory(
+            HistoryId::Disk {
+                session_id: name.to_owned(),
+            },
+            Some(custom_dir.to_owned()),
+        )
     }
 
     fn random_string(rng: &mut ThreadRng) -> WString {
@@ -2292,7 +2321,6 @@ mod tests {
         // Regression test for #7582.
         // Temporary directory for the history files.
         let hist_tmpdir = fish_tempfile::new_dir().unwrap();
-        let hist_dir = Some(osstr2wcstring(hist_tmpdir.path()));
 
         // Temporary directory for the files we will detect.
         let tmpdir = fish_tempfile::new_dir().unwrap();
@@ -2309,7 +2337,8 @@ mod tests {
         test_vars.set_one(L!("PWD"), global_mode, wdir_path.clone());
         test_vars.set_one(L!("HOME"), global_mode, wdir_path.clone());
 
-        let history = History::new_with_directory(L!("path_detection"), hist_dir);
+        let history =
+            create_test_history(L!("path_detection"), &osstr2wcstring(hist_tmpdir.path()));
         history.clear();
         assert_eq!(history.size(), 0);
         history.add_pending_with_file_detection(

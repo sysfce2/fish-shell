@@ -6,6 +6,7 @@ use crate::{
     common::valid_var_name,
     env::{EnvMode, EnvVar, EnvVarFlags, Environment as _, READ_BYTE_LIMIT},
     err_fmt, err_str,
+    history::{HistoryId, MemoryHistoryId},
     input_common::{DecodeState, InvalidPolicy, decode_utf8},
     nix::isatty,
     parse_execution::varname_error,
@@ -261,7 +262,11 @@ fn read_interactive(
     let old_modes = set_shell_modes_temporarily(inputfd);
 
     // Keep in-memory history only.
-    reader_push(parser, L!(""), conf);
+    reader_push(
+        parser,
+        HistoryId::Memory(MemoryHistoryId::BuiltinRead),
+        conf,
+    );
     let _modifiable_commandline = parser.scope().readonly_commandline.then(|| {
         parser.push_scope(|s| {
             s.readonly_commandline = false;

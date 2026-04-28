@@ -5,7 +5,7 @@ use crate::env::{
 use crate::env_universal_common::EnvUniversal;
 use crate::flog::flog;
 use crate::global_safety::RelaxedAtomicBool;
-use crate::history::{History, history_session_id_from_var};
+use crate::history::{History, history_id_from_var};
 use crate::kill::kill_entries;
 use crate::null_terminated_array::OwningNullTerminatedArray;
 use crate::portable_atomic::AtomicU64;
@@ -373,8 +373,8 @@ impl EnvScopedImpl {
             }
             let history = commandline_get_state(true).history.unwrap_or_else(|| {
                 let fish_history_var = self.getf(L!("fish_history"), EnvMode::default());
-                let session_id = history_session_id_from_var(fish_history_var);
-                History::new(&session_id)
+                let history_id = history_id_from_var(fish_history_var);
+                History::new(history_id)
             });
             Some(EnvVar::new_from_name_vec(
                 L!("history"),

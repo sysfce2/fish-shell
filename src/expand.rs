@@ -13,7 +13,7 @@ use crate::{
     complete::{CompleteFlags, Completion, CompletionList, CompletionReceiver},
     env::{EnvVar, Environment},
     exec::exec_subshell_for_expand,
-    history::{History, history_session_id},
+    history::{History, history_id},
     operation_context::OperationContext,
     parse_constants::{ParseError, ParseErrorCode, ParseErrorList, SOURCE_LOCATION_UNKNOWN},
     parse_util::{MaybeParentheses, expand_variable_error, locate_cmdsubst_range},
@@ -613,7 +613,7 @@ fn expand_variables(
     let mut history = None;
     let mut var = None;
     if var_name == "history" {
-        history = Some(History::new(&history_session_id(vars)));
+        history = Some(History::new(history_id(vars)));
     } else if var_name.as_char_slice() != [VARIABLE_EXPAND_EMPTY] {
         var = vars.get(var_name);
     }

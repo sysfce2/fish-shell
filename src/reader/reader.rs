@@ -47,8 +47,8 @@ use crate::{
         parse_text_face_for_highlight,
     },
     history::{
-        History, HistorySearch, PersistenceMode, SearchDirection, SearchFlags, SearchType,
-        history_session_id, in_private_mode,
+        History, HistoryId, HistorySearch, MemoryHistoryId, PersistenceMode, SearchDirection,
+        SearchFlags, SearchType, history_id, in_private_mode,
     },
     input_common::{
         BackgroundColorQuery, CharEvent, CharInputStyle, CursorPositionQuery,
@@ -369,8 +369,11 @@ pub use current_data as reader_current_data;
 use fish_widestring::word_char::{WordCharClass, is_blank};
 
 /// Add a new reader to the reader stack.
-/// If `history_name` is empty, then save history in-memory only; do not write it to disk.
-pub fn reader_push<'a>(parser: &'a Parser, history_name: &wstr, conf: ReaderConfig) -> Reader<'a> {
+pub fn reader_push<'a>(
+    parser: &'a Parser,
+    history_id: HistoryId,
+    conf: ReaderConfig,
+) -> Reader<'a> {
     assert_is_main_thread();
     let inputfd = conf.inputfd;
     let input_data = if !parser.interactive_initialized.swap(true) {
@@ -398,7 +401,7 @@ pub fn reader_push<'a>(parser: &'a Parser, history_name: &wstr, conf: ReaderConf
     } else {
         InputData::new(inputfd, *parser.blocking_query_timeout.borrow())
     };
-    let hist = History::new(history_name);
+    let hist = History::new(history_id);
     hist.resolve_pending();
     let data = ReaderData::new(input_data, hist, conf, reader_data_stack().is_empty());
     reader_data_stack().push(data);
@@ -427,7 +430,7 @@ pub fn fake_scoped_reader<'a>(parser: &'a Parser) -> impl ScopeGuarding<Target =
         inputfd,
         ..Default::default()
     };
-    let hist = History::new(L!(""));
+    let hist = History::new(HistoryId::Memory(MemoryHistoryId::PrivateMode));
     let input_data = InputData::new(inputfd, None);
     let data = ReaderData::new(input_data, hist, conf, reader_data_stack().is_empty());
     reader_data_stack().push(data);
@@ -830,7 +833,7 @@ fn read_i(parser: &Parser) {
         conf.right_prompt_cmd = RIGHT_PROMPT_FUNCTION_NAME.to_owned();
     }
 
-    let mut data = reader_push(parser, &history_session_id(parser.vars()), conf);
+    let mut data = reader_push(parser, history_id(parser.vars()), conf);
     data.import_history_if_necessary();
 
     // Set up tty protocols. These should be enabled while we're reading interactively,
@@ -1052,14 +1055,14 @@ pub fn restore_term_mode() {
 }
 
 /// Change the history file for the current command reading context.
-pub fn reader_change_history(name: &wstr) {
+pub fn reader_change_history(history_id: HistoryId) {
     // We don't need to _change_ if we're not initialized yet.
     let Some(data) = current_data() else {
         return;
     };
 
     data.history.save();
-    data.history = History::new(name);
+    data.history = History::new(history_id);
     commandline_state_snapshot().history = Some(data.history.clone());
 }
 
