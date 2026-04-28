@@ -54,8 +54,8 @@ enum AssetDir {
 
 #[derive(Debug)]
 pub enum AutoloadPath {
+    OnDisk(WString),
     Embedded(String),
-    Path(WString),
 }
 
 #[derive(Debug)]
@@ -102,10 +102,7 @@ impl Autoload {
                 .unwrap_or_default(),
         );
         match result {
-            AutoloadResult::Path(AutoloadPath::Embedded(_)) => {
-                flogf!(autoload, "Embedded: %s", cmd);
-            }
-            AutoloadResult::Path(AutoloadPath::Path(ref path)) => {
+            AutoloadResult::Path(AutoloadPath::OnDisk(ref path)) => {
                 flogf!(
                     autoload,
                     "Loading %s from var %s from path %s",
@@ -113,6 +110,9 @@ impl Autoload {
                     self.env_var_name,
                     path
                 );
+            }
+            AutoloadResult::Path(AutoloadPath::Embedded(_)) => {
+                flogf!(autoload, "Embedded: %s", cmd);
             }
             AutoloadResult::Loaded | AutoloadResult::Pending | AutoloadResult::None => {}
         }
@@ -129,7 +129,7 @@ impl Autoload {
         let prev_statuses = parser.get_last_statuses();
         let _put_back = ScopeGuard::new((), |()| parser.set_last_statuses(prev_statuses));
         match path {
-            AutoloadPath::Path(p) => {
+            AutoloadPath::OnDisk(p) => {
                 let script_source = L!("source ").to_owned() + &escape(p)[..];
                 parser.eval(&script_source, &IoChain::new());
             }
@@ -219,8 +219,8 @@ impl Autoload {
         };
 
         let file_id = match &file {
-            AutoloadableFileInfo::FileInfo(file) => &file.file_id,
-            AutoloadableFileInfo::EmbeddedPath(_) => &INVALID_FILE_ID,
+            AutoloadableFileInfo::OnDisk { file_id, .. } => file_id,
+            AutoloadableFileInfo::Embedded { .. } => &INVALID_FILE_ID,
         };
 
         // Is this file the same as what we previously autoloaded?
@@ -236,8 +236,8 @@ impl Autoload {
         self.autoloaded_files
             .insert(cmd.to_owned(), file_id.clone());
         AutoloadResult::Path(match file {
-            AutoloadableFileInfo::FileInfo(path) => AutoloadPath::Path(path.path),
-            AutoloadableFileInfo::EmbeddedPath(path) => AutoloadPath::Embedded(path),
+            AutoloadableFileInfo::OnDisk { path, .. } => AutoloadPath::OnDisk(path),
+            AutoloadableFileInfo::Embedded { path } => AutoloadPath::Embedded(path),
         })
     }
 }
@@ -247,19 +247,11 @@ const AUTOLOAD_STALENESS_INTERVALL: u64 = 15;
 
 /// Represents a file that we might want to autoload.
 #[derive(Clone)]
-struct FileInfo {
-    /// The path to the file.
-    path: WString,
-    /// The metadata for the file.
-    file_id: FileId,
-}
-
-#[derive(Clone)]
 enum AutoloadableFileInfo {
     /// An on-disk file.
-    FileInfo(FileInfo),
+    OnDisk { path: WString, file_id: FileId },
     /// An embedded file.
-    EmbeddedPath(String),
+    Embedded { path: String },
 }
 
 // A timestamp is a monotonic point in time.
@@ -329,7 +321,7 @@ impl AutoloadFileCache {
 
         // Check hits.
         if let Some(value) = self.known_files.get(cmd) {
-            let embedded = matches!(value.file, AutoloadableFileInfo::EmbeddedPath(_));
+            let embedded = matches!(value.file, AutoloadableFileInfo::Embedded { .. });
             if allow_stale
                 || embedded
                 || Self::is_fresh(value.last_checked, Self::current_timestamp())
@@ -431,7 +423,7 @@ impl AutoloadFileCache {
             let file_id = file_id_for_path(&path);
             if file_id != INVALID_FILE_ID {
                 // Found it.
-                return Some(AutoloadableFileInfo::FileInfo(FileInfo { path, file_id }));
+                return Some(AutoloadableFileInfo::OnDisk { path, file_id });
             }
         }
         None
@@ -445,11 +437,11 @@ impl AutoloadFileCache {
         }
         let narrow = wcs2bytes(cmd);
         let cmdstr = std::str::from_utf8(&narrow).ok()?;
-        let p = match asset_dir {
+        let path = match asset_dir {
             AssetDir::Functions => "functions/".to_owned() + cmdstr + ".fish",
             AssetDir::Completions => "completions/".to_owned() + cmdstr + ".fish",
         };
-        has_asset(&p).then_some(AutoloadableFileInfo::EmbeddedPath(p))
+        has_asset(&path).then_some(AutoloadableFileInfo::Embedded { path })
     }
 }
 
