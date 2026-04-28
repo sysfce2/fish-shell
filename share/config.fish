@@ -206,8 +206,8 @@ end
 
 if status is-interactive
     __fish_migrate
+    fish_config theme choose default --no-override
 end
-fish_config theme choose default --no-override
 
 # As last part of initialization, source the conf directories.
 # Implement precedence (User > Admin > Extra (e.g. vendors) > Fish) by basically doing "basename".

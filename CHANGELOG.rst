@@ -6,6 +6,7 @@ Notable improvements and fixes
 
 Deprecations and removed features
 ---------------------------------
+- The default theme (i.e. the ``fish_color_*`` variables) is no longer set in non-interactive shells.
 
 Interactive improvements
 ------------------------
