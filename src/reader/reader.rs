@@ -1154,9 +1154,9 @@ pub fn reader_execute_readline_cmd(parser: &Parser, ch: CharEvent) {
     if matches!(
         readline_cmd_evt.cmd,
         ReadlineCmd::ClearScreenAndRepaint
+            | ReadlineCmd::ForceRepaint
             | ReadlineCmd::RepaintMode
             | ReadlineCmd::Repaint
-            | ReadlineCmd::ForceRepaint
     ) {
         data.queued_repaint = true;
     }
@@ -2847,7 +2847,9 @@ impl<'a> Reader<'a> {
                     self.command_line_transient_edit = None;
                 }
 
-                self.rls_mut().last_cmd = Some(readline_cmd);
+                if !command_only_affects_rendering(readline_cmd) {
+                    self.rls_mut().last_cmd = Some(readline_cmd);
+                }
             }
             CharEvent::Command(command) => {
                 self.run_input_command_scripts(&command);
@@ -6288,6 +6290,15 @@ fn command_ends_history_search(c: ReadlineCmd) -> bool {
             | rl::ClearScreenAndRepaint
             | rl::Repaint
             | rl::ForceRepaint
+    )
+}
+
+fn command_only_affects_rendering(c: ReadlineCmd) -> bool {
+    #[allow(non_camel_case_types)]
+    type rl = ReadlineCmd;
+    matches!(
+        c,
+        rl::ClearScreenAndRepaint | rl::ForceRepaint | rl::RepaintMode | rl::Repaint
     )
 }
 

@@ -10,6 +10,7 @@ Deprecations and removed features
 Interactive improvements
 ------------------------
 - :doc:`prompt_pwd <cmds/prompt_pwd>` now strips control characters.
+- Repaint events (as triggered by changes to color variables or event handlers running ``commandline -f repaint``) no longer reset the completion pager and other transient UI states (:issue:`12683`).
 - Background color and underline color specified in :envvar:`fish_color_valid_path` are now respected (:issue:`12622`).
 
 Improved terminal support
