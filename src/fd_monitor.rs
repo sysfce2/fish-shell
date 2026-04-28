@@ -1,5 +1,4 @@
 use crate::fd_readable_set::{FdReadableSet, Timeout};
-use crate::fds::heightenize_fd;
 use crate::flog::flog;
 use crate::portable_atomic::AtomicU64;
 use crate::threads::assert_is_background_thread;
@@ -50,6 +49,7 @@ impl FdEventSignaller {
                     perror("eventfd");
                     exit_without_destructors(1);
                 }
+                use crate::fds::heightenize_fd;
                 let Ok(fd) = heightenize_fd(unsafe { OwnedFd::from_raw_fd(fd) }, true) else {
                     perror("eventfd");
                     exit_without_destructors(1);
