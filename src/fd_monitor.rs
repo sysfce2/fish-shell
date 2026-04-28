@@ -430,7 +430,7 @@ impl BackgroundFdMonitor {
             // Note that WSLv1 doesn't throw EBADF if the fd is closed is mid-select.
             drop(data);
             let ret = fds.check_readable(timeout.map_or(Timeout::Forever, Timeout::Duration));
-            // Cygwin reports ret < 0 && errno == 0 as success.
+            // TODO Cygwin reports ret < 0 && errno == 0 as success. Remove the workaround for msys2-runtime>=3.6.9, see https://github.com/msys2/msys2-runtime/issues/308#issuecomment-4301066343
             let err = errno().0;
             if ret < 0 && !matches!(err, libc::EINTR | libc::EAGAIN) && !(cfg!(cygwin) && err == 0)
             {
