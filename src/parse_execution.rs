@@ -1749,9 +1749,6 @@ impl<'a> ExecutionContext<'a> {
         }
         let mut result = self.run_1_job(ctx, &job_expr.job, associated_block);
         for jc in &job_expr.continuations {
-            if result != EndExecutionReason::Ok {
-                return result;
-            }
             if let Some(reason) = self.check_end_execution(ctx) {
                 return reason;
             }

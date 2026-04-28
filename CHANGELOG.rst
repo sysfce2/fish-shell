@@ -33,6 +33,7 @@ Regression fixes:
 -----------------
 - Vi mode ``dl`` (:issue:`12461`).
 - (from 4.6) Backspace after newline (:issue:`12583`).
+- (from 3.2) ``nosuchcommand || echo hello`` executes the right hand side again (:issue:`12654`).
 
 fish 4.6.0 (released March 28, 2026)
 ====================================
